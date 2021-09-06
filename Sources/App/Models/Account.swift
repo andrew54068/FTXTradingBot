@@ -8,7 +8,16 @@
 import Foundation
 
 struct Account: Decodable {
+    let username: String
     let makerFee: Double
     let takerFee: Double
-    let username: String
+    
+    let collateral: Double
+    let freeCollateral: Double
+    let totalAccountValue: Double
+    
+    let marginFraction: Double?
+    let openMarginFraction: Double?
+    let initialMarginRequirement: Double
+    let maintenanceMarginRequirement: Double
 }

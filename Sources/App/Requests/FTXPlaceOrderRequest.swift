@@ -25,36 +25,38 @@ struct FTXPlaceOrderRequest: FTXTargetType {
     }
     
     var task: Task {
-        let param: Dictionary<String, Any> = [
+        var param: Dictionary<String, Any> = [
             "market": marketSymbol,
             "side": orderActionType.action,
-            "price": price,
             "type":  orderActionType.type.rawValue,
-            "size": tradeVolume,
+            "size": baseVolume,
             "reduceOnly": false,
             "ioc": false,
             "postOnly": false,
         ]
+        if case let .limit(_, price) = orderActionType {
+            param["price"] = price
+        } else {
+            param.updateValue(NSNull(), forKey: "price")
+        }
         return .requestParameters(parameters: param, encoding: JSONEncoding(options: .withoutEscapingSlashes))
     }
     
     let marketSymbol: String
-    let price: Double
     let orderActionType: OrderActionType
-    let tradeVolume: Double
-//    let tradeVolume: TradeVolume
+    let baseVolume: Double
     let reduceOnly: Bool
     
 }
 
 enum TradeVolume {
-    case base(Decimal)
-    case quote(Decimal)
+    case base(Double)
+    case quote(Double)
 }
 
 enum OrderActionType {
-    case limit(TradeAction)
-    case market(TradeAction)
+    case limit(tradeAction: TradeAction, price: Double)
+    case market(tradeAction: TradeAction)
     
     var type: OrderType {
         switch self {
@@ -65,9 +67,17 @@ enum OrderActionType {
         }
     }
     
+    var actionType: TradeAction {
+        switch self {
+        case .limit(let tradeAction, _),
+             .market(let tradeAction):
+            return tradeAction
+        }
+    }
+    
     var action: String {
         switch self {
-        case .limit(let tradeAction):
+        case .limit(let tradeAction, _):
             return tradeAction.rawValue
         case .market(let tradeAction):
             return tradeAction.rawValue
