@@ -18,8 +18,6 @@ final class GridTradingService {
     let ftx: FTXClient
     let logger: Logger
 
-//    private lazy var disposeBag: DisposeBag = DisposeBag()
-
     init(
         ftxClient: FTXClient,
         logger: Logger

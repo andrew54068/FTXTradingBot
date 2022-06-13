@@ -98,13 +98,13 @@ public struct OrderResponseModel: Decodable {
     let id: Int
     let createdAt: String
     let filledSize: Double
-    let future: String
-    let market: String
-    let side: String
+    let future: String?
+    let market: String // "BLT/USD"
+    let side: String // "buy"
     let price: Double
     let size: Double
     let remainingSize: Double
-    let status: String
+    let status: String // "new"
 //    let status: FTXOrderStatus
     let type: String
 //    let type: OrderType
@@ -112,15 +112,51 @@ public struct OrderResponseModel: Decodable {
     let ioc: Bool
     let postOnly: Bool
     let clientId: String?
+
+    public init(
+        id: Int,
+        createdAt: String,
+        filledSize: Double,
+        future: String,
+        market: String,
+        side: String,
+        price: Double,
+        size: Double,
+        remainingSize: Double,
+        status: String,
+        type: String,
+        reduceOnly: Bool,
+        ioc: Bool,
+        postOnly: Bool,
+        clientId: String?
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.filledSize = filledSize
+        self.future = future
+        self.market = market
+        self.side = side
+        self.price = price
+        self.size = size
+        self.remainingSize = remainingSize
+        self.status = status
+        self.type = type
+        self.reduceOnly = reduceOnly
+        self.ioc = ioc
+        self.postOnly = postOnly
+        self.clientId = clientId
+    }
 }
 
-// extension OrderResponseModel: ResponseEncodable {
-//
+extension OrderResponseModel: Content {
+    
+}
+
+//extension OrderResponseModel: ResponseEncodable {
 //    public func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
-//        <#code#>
+//        request.eventLoop.makeCompletedFuture(Result<Success, Error>)
 //    }
-//
-// }
+//}
 
 enum FTXOrderStatus {
     case open

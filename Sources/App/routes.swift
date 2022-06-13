@@ -1,21 +1,19 @@
 import Fluent
+import Foundation
 import Vapor
-// import RxSwift
 
 func routes(_ app: Application) throws {
-    app.get { req in
-        req.view.render("index.leaf", ["title": "Hello Vapor!"])
-    }
+//    app.get { req in
+//        req.view.render("index.leaf", ["title": "Hello Vapor!"])
+//    }
 
-    app.get { req -> EventLoopFuture<OrderResponseModel> in
-        req.application.threadPool.runIfActive(eventLoop: req.eventLoop) {
-            do {
-                return try await startService(app: app).get()
-            } catch {
-                let promise = req.eventLoop.makePromise(of: OrderResponseModel.self)
-                promise.fail(<#T##Error#>)
-                return promise.futureResult
-            }
+    app.get { _ -> EventLoopFuture<String> in
+        startService(app: app).flatMapThrowing { orderResponseModel in
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(orderResponseModel)
+            let result = String(data: data, encoding: .utf8) ?? ""
+            app.logger.log(level: .info, .init(stringLiteral: result))
+            return result
         }
     }
 

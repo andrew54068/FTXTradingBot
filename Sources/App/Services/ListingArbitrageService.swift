@@ -46,12 +46,6 @@ final class ListingArbitrageService {
                     )
                 }
             }
-//            .subscribe(onSuccess: { [weak self] orderResponseModel in
-//                self?.logger.info("\(orderResponseModel)")
-//            }, onError: { [weak self] error in
-//                self?.logger.error("\(error)")
-//            })
-//            .disposed(by: disposeBag)
     }
 
     private func addSpotOrder(

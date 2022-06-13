@@ -6,14 +6,11 @@
 //
 
 import Foundation
-// import RxSwift
 import Vapor
 
 final class FundingFeeArbitrageService {
     let ftx: FTXClient
     let logger: Logger
-
-//    private lazy var disposeBag: DisposeBag = DisposeBag()
 
     init(
         ftxClient: FTXClient,
@@ -43,36 +40,14 @@ final class FundingFeeArbitrageService {
                         on: self.ftx.client.eventLoop
                     )
             }
-
-//            .flatMap { [weak self] account in
-//                guard let self = self else {
-//                    let promise = self.ftx.client.eventLoop.makePromise(of: (OrderResponseModel, OrderResponseModel).self)
-//                    promise.fail(ServiceError.internal)
-//                    return promise.futureResult
-//                }
-//                let spotInvestment = account.totalAccountValue * leverage / (leverage + 1)
-//                let futureInvestment = account.totalAccountValue * leverage / (leverage + 1)
-//                let pair = Pair(base: crypto, quote: Crypto.usd)
-//                return EventLoopFuture.whenAllComplete(
-//                    [
-//                        self.addSpotOrder(pair: pair, tradeVolume: spotInvestment),
-//                        self.addFutureOrder(crypto: crypto, tradeVolume: futureInvestment)
-//                    ],
-//                    on: self.ftx.client.eventLoop)
-//            }
             .whenComplete { [weak self] result in
                 switch result {
                 case let .success(orderResponses):
                     self?.logger.info("\(orderResponses)")
-//                    self?.logger.info("\(futureOrderResponse)")
                 case let .failure(error):
                     self?.logger.error("\(error)")
                 }
             }
-//            .subscribe(onSuccess: { [weak self] stopOrderResponse, futureOrderResponse in
-//            }, onError: { [weak self] error in
-//            })
-//            .disposed(by: disposeBag)
     }
 
     private func addSpotOrder(pair: Pair, tradeVolume: Double) -> EventLoopFuture<OrderResponseModel> {

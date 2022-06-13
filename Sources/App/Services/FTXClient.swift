@@ -21,11 +21,6 @@ class FTXClient {
     let client: Vapor.Client
     let logger: Logger
 
-//    private lazy var apiProvider: FTXProvider = FTXProvider(
-//        apiKey: apiKey,
-//        apiSecret: apiSecret,
-//        subAccountName: subAccountName)
-
     private lazy var plugin = FTXRequestHeaderPlugin(
         apiKey: apiKey,
         apiSecret: apiSecret,
@@ -77,10 +72,10 @@ class FTXClient {
                     switch orderActionType.actionType {
                     case .buy:
                         let sellPrice = marketModel.ask
-                        baseVolume = volume / sellPrice
+                        baseVolume = floor(volume / sellPrice)
                     case .sell:
                         let buyPrice = marketModel.bid
-                        baseVolume = volume / buyPrice
+                        baseVolume = floor(volume / buyPrice)
                     }
                     let orderRequest = FTXPlaceOrderRequest(
                         marketSymbol: tradingTargetType.marketSymbol(.ftx),

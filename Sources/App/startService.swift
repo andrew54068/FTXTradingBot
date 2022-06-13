@@ -10,6 +10,8 @@ import Vapor
 
 let maxAttemptCount = 3
 
+var globalListingArbitrageService: ListingArbitrageService?
+
 public func startService(app: Application) -> EventLoopFuture<OrderResponseModel> {
     let apiSecret: String = Environment.get("apiSecret") ?? ""
     let apiKey: String = Environment.get("apiKey") ?? ""
@@ -30,9 +32,11 @@ public func startService(app: Application) -> EventLoopFuture<OrderResponseModel
         ftxClient: ftx,
         logger: app.logger
     )
+    
+    globalListingArbitrageService = listingArbitrageService
 
     return listingArbitrageService.start(
-        bidPrice: 1.01,
+        bidPrice: 0.05,
         tradingTargetType: .spot(
             pair: Pair(
                 base: Crypto.bloctoToken,
