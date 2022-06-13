@@ -1,13 +1,22 @@
 import Fluent
 import Vapor
+// import RxSwift
 
 func routes(_ app: Application) throws {
-//    app.get { req in
-//        return req.view.render("index.leaf", ["title": "Hello Vapor!"])
-//    }
-    
     app.get { req in
-        return "It works!"
+        req.view.render("index.leaf", ["title": "Hello Vapor!"])
+    }
+
+    app.get { req -> EventLoopFuture<OrderResponseModel> in
+        req.application.threadPool.runIfActive(eventLoop: req.eventLoop) {
+            do {
+                return try await startService(app: app).get()
+            } catch {
+                let promise = req.eventLoop.makePromise(of: OrderResponseModel.self)
+                promise.fail(<#T##Error#>)
+                return promise.futureResult
+            }
+        }
     }
 
     app.post("orders") { req -> String in
@@ -17,5 +26,4 @@ func routes(_ app: Application) throws {
         req.logger.info("\(req.parameters)")
         return "\(req.body)\(req.headers)\(req.method)"
     }
-
 }

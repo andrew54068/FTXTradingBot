@@ -1,34 +1,34 @@
 //
 //  FTXPlaceOrderRequest.swift
-//  
+//
 //
 //  Created by Andrew Wang on 2021/8/31.
 //
 
-import Moya
 import Foundation
+import NIOHTTP1
+import Vapor
 
-struct FTXPlaceOrderRequest: FTXTargetType {
-    
+struct FTXPlaceOrderRequest: FTXTargetType, FTXSignatureTargetType {
     typealias ResultType = OrderResponseModel
-    
-    var method: Moya.Method {
-        .post
+
+    var method: HTTPMethod {
+        .POST
     }
-    
+
     var keyPath: String? {
         "result"
     }
-    
+
     var path: String {
         "/api/orders"
     }
-    
+
     var task: Task {
-        var param: Dictionary<String, Any> = [
+        var param: [String: Any] = [
             "market": marketSymbol,
             "side": orderActionType.action,
-            "type":  orderActionType.type.rawValue,
+            "type": orderActionType.type.rawValue,
             "size": baseVolume,
             "reduceOnly": false,
             "ioc": false,
@@ -41,12 +41,11 @@ struct FTXPlaceOrderRequest: FTXTargetType {
         }
         return .requestParameters(parameters: param, encoding: JSONEncoding(options: .withoutEscapingSlashes))
     }
-    
+
     let marketSymbol: String
     let orderActionType: OrderActionType
     let baseVolume: Double
     let reduceOnly: Bool
-    
 }
 
 enum TradeVolume {
@@ -57,7 +56,7 @@ enum TradeVolume {
 enum OrderActionType {
     case limit(tradeAction: TradeAction, price: Double)
     case market(tradeAction: TradeAction)
-    
+
     var type: OrderType {
         switch self {
         case .limit:
@@ -66,20 +65,20 @@ enum OrderActionType {
             return .market
         }
     }
-    
+
     var actionType: TradeAction {
         switch self {
-        case .limit(let tradeAction, _),
-             .market(let tradeAction):
+        case let .limit(tradeAction, _),
+             let .market(tradeAction):
             return tradeAction
         }
     }
-    
+
     var action: String {
         switch self {
-        case .limit(let tradeAction, _):
+        case let .limit(tradeAction, _):
             return tradeAction.rawValue
-        case .market(let tradeAction):
+        case let .market(tradeAction):
             return tradeAction.rawValue
         }
     }
@@ -95,7 +94,7 @@ enum TradeAction: String {
     case sell
 }
 
-struct OrderResponseModel: Decodable {
+public struct OrderResponseModel: Decodable {
     let id: Int
     let createdAt: String
     let filledSize: Double
@@ -114,6 +113,14 @@ struct OrderResponseModel: Decodable {
     let postOnly: Bool
     let clientId: String?
 }
+
+// extension OrderResponseModel: ResponseEncodable {
+//
+//    public func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
+//        <#code#>
+//    }
+//
+// }
 
 enum FTXOrderStatus {
     case open

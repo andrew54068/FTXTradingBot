@@ -1,15 +1,23 @@
 //
 //  FTXSignatureTargetType.swift
-//  
+//
 //
 //  Created by Andrew Wang on 2021/8/30.
 //
 
 import Foundation
-import Moya
+import NIOHTTP1
 
 protocol FTXSignatureTargetType {
-    var method: Moya.Method { get }
+    var method: HTTPMethod { get }
+
     var path: String { get }
-    var currentTimestamp: TimeInterval { get }
+
+    var needSignature: Bool { get }
+}
+
+extension FTXSignatureTargetType {
+    var needSignature: Bool {
+        true
+    }
 }

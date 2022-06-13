@@ -1,68 +1,78 @@
 //
 //  FTXClient.swift
-//  
+//
 //
 //  Created by Andrew Wang on 2021/8/29.
 //
 
+import AsyncHTTPClient
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 import Foundation
-import CryptoKit
-import Moya
-import RxSwift
 import Vapor
 
-public class FTXClient {
+class FTXClient {
     let apiSecret: String
     let apiKey: String
     let subAccountName: String?
     let client: Vapor.Client
-    
-    private lazy var disposeBag: DisposeBag = DisposeBag()
-    
-    private lazy var apiProvider: FTXProvider = FTXProvider(
-        apiKey: apiKey,
-        apiSecret: apiSecret,
-        subAccountName: subAccountName)
-    
+    let logger: Logger
+
+//    private lazy var apiProvider: FTXProvider = FTXProvider(
+//        apiKey: apiKey,
+//        apiSecret: apiSecret,
+//        subAccountName: subAccountName)
+
     private lazy var plugin = FTXRequestHeaderPlugin(
         apiKey: apiKey,
         apiSecret: apiSecret,
-        subAccountName: subAccountName)
-    
+        subAccountName: subAccountName
+    )
+
     private let jsonDecoder = JSONDecoder()
-    
-    init(apiKey: String,
-         apiSecret: String,
-         subAccountName: String? = nil,
-         client: Vapor.Client) {
+
+    init(
+        apiKey: String,
+        apiSecret: String,
+        subAccountName: String? = nil,
+        client: Vapor.Client,
+        logger: Logger
+    ) {
         self.apiKey = apiKey
         self.apiSecret = apiSecret
         self.subAccountName = subAccountName
         self.client = client
+        self.logger = logger
     }
-    
-    func fetchAccount() -> Single<Account> {
+
+    func fetchAccount() -> EventLoopFuture<Account> {
         let accountRequest = FTXAccountRequest()
         return get(request: accountRequest)
     }
-    
+
     func placeOrder(
         tradingTargetType: TradingTargetType,
         orderActionType: OrderActionType,
         tradeVolume: TradeVolume,
-        reduceOnly: Bool = false) -> Single<OrderResponseModel> {
+        reduceOnly: Bool = false
+    ) -> EventLoopFuture<OrderResponseModel> {
+        let eventLoop = client.eventLoop
         switch tradeVolume {
-        case .base(let volume):
+        case let .base(volume):
             let orderRequest = FTXPlaceOrderRequest(
                 marketSymbol: tradingTargetType.marketSymbol(.ftx),
                 orderActionType: orderActionType,
                 baseVolume: volume,
-                reduceOnly: reduceOnly)
+                reduceOnly: reduceOnly
+            )
             return post(request: orderRequest)
-        case .quote(let volume):
+        case let .quote(volume):
             return getSingleMarket(tradingTargetType: tradingTargetType)
-                .flatMap { [weak self] marketModel -> Single<OrderResponseModel> in
-                    guard let self = self else { return Single<OrderResponseModel>.error(FTXClientError.internal) }
+                .flatMap { [weak self] marketModel in
+                    guard let self = self else { return eventLoop.makeFailedFuture(FTXClientError.internal) }
                     let baseVolume: Double
                     switch orderActionType.actionType {
                     case .buy:
@@ -76,132 +86,87 @@ public class FTXClient {
                         marketSymbol: tradingTargetType.marketSymbol(.ftx),
                         orderActionType: orderActionType,
                         baseVolume: baseVolume,
-                        reduceOnly: reduceOnly)
+                        reduceOnly: reduceOnly
+                    )
                     return self.post(request: orderRequest)
                 }
         }
     }
-    
-    func getSingleMarket(tradingTargetType: TradingTargetType) -> Single<MarketModel> {
+
+    func getSingleMarket(tradingTargetType: TradingTargetType) -> EventLoopFuture<MarketModel> {
         let request = FTXSingleMarketRequest(name: tradingTargetType.marketSymbol(.ftx))
         return get(request: request)
     }
-    
-    func get<Request: FTXTargetType>(request: Request) -> Single<Request.ResultType> {
-        fetch(request: request, method: .get)
+
+    func get<Request: FTXTargetType>(request: Request) -> EventLoopFuture<Request.ResultType> {
+        fetch(request: request)
     }
-    
-    func post<Request: FTXTargetType>(request: Request) -> Single<Request.ResultType> {
-        fetch(request: request, method: .post)
+
+    func post<Request: FTXTargetType>(request: Request) -> EventLoopFuture<Request.ResultType> {
+        fetch(request: request)
     }
-    
-    private func fetch<Request: FTXTargetType>(request: Request, method: Moya.Method) -> Single<Request.ResultType> {
-        let endpoint = MoyaProvider.defaultEndpointMapping(for: request)
-        return Single<Request.ResultType>.create { [weak self] single in
-            do {
-                guard let self = self else {
-                    throw ResponseError.handlerNotFound
-                }
-                let urlRequest: URLRequest = try endpoint.urlRequest()
-                let adjustedRequest: URLRequest = self.plugin.prepare(urlRequest, method: method, target: request)
-                let headerFields = adjustedRequest.allHTTPHeaderFields?.map {
-                    ($0, $1)
-                } ?? []
-                let headers: HTTPHeaders = HTTPHeaders(headerFields)
-                let future: EventLoopFuture<ClientResponse>
-                switch method {
-                case .get:
-                    future = self.client.get(
-                        URI(string: endpoint.url),
-                        headers: headers)
-                case .post:
-                    let bodyBufferAllocator = ByteBufferAllocator()
-                    let bodyBuffer = bodyBufferAllocator.buffer(data: adjustedRequest.httpBody ?? Data())
-                    
-                    let request = ClientRequest(
-                        method: .POST,
-                        url: URI(string: endpoint.url),
-                        headers: headers,
-                        body: bodyBuffer)
-                    future = self.client.send(request)
-                default:
-                    throw ResponseError.methodUnsupported
-                }
-                let response: ClientResponse = try future.wait()
+
+    private func fetch<Request: FTXTargetType>(request: Request) -> EventLoopFuture<Request.ResultType> {
+        var endpoint = Endpoint(
+            urlString: request.urlString,
+            method: request.method,
+            path: request.path,
+            task: request.task,
+            httpHeaderFields: request.headers
+        )
+        if request.needSignature {
+            endpoint = plugin.prepare(endpoint: endpoint)
+        }
+
+        let future: EventLoopFuture<ClientResponse>
+        switch endpoint.method {
+        case .GET:
+            future = client.get(
+                URI(string: endpoint.urlString),
+                headers: endpoint.headerForRequest
+            )
+        case .POST:
+            let bodyBufferAllocator = ByteBufferAllocator()
+            let bodyBuffer = bodyBufferAllocator.buffer(data: endpoint.httpBody)
+
+            let request = ClientRequest(
+                method: endpoint.method,
+                url: URI(string: endpoint.urlString),
+                headers: endpoint.headerForRequest,
+                body: bodyBuffer
+            )
+            future = client.send(request)
+        default:
+            let promise = client.eventLoop.makePromise(of: Request.ResultType.self)
+            promise.fail(FTXClientError.badRequest)
+            return promise.futureResult
+        }
+        return future
+            .flatMapThrowing { response in
                 if var body: ByteBuffer = response.body,
                    let bodyData = body.readData(length: body.readableBytes) {
                     let resultModel: Request.ResultType = try response.map(
-                        Request.ResultType.self,
                         data: bodyData,
                         atKeyPath: request.keyPath,
-                        using: self.jsonDecoder)
-                    single(.success(resultModel))
+                        using: self.jsonDecoder
+                    )
+                    return resultModel
                 } else {
-                    single(.error(ResponseError.responseDataNotFound))
+                    throw ResponseError.responseDataNotFound
                 }
-            } catch {
-                single(.error(error))
             }
-            return Disposables.create { }
-        }
+//            .whenComplete { result in
+//                switch result {
+//                case .success:
+//                    self.logger.log(level: .info, "order success.")
+//                case .failure(let error):
+//                    self.logger.log(level: .info, "\(error.localizedDescription)")
+//                }
+//            }
     }
 }
 
 enum FTXClientError: Error {
     case `internal`
-}
-
-enum Exchange {
-    case ftx
-}
-
-enum Crypto {
-    case bitcoin
-    case ethereum
-    case solana
-    case cardano
-    case mango
-    case usdt
-    case usd
-    
-    var symbol: String {
-        switch self {
-        case .bitcoin:
-            return "BTC"
-        case .ethereum:
-            return "ETH"
-        case .solana:
-            return "SOL"
-        case .cardano:
-            return "ADA"
-        case .mango:
-            return "MNGO"
-        case .usdt:
-            return "USDT"
-        case .usd:
-            return "USD"
-        }
-    }
-}
-
-enum TradingTargetType {
-    case spot(pair: Pair)
-    case perpetual(crypto: Crypto)
-    
-    func marketSymbol(_ exchange: Exchange) -> String {
-        switch exchange {
-        case .ftx:
-            switch self {
-            case .spot(let pair):
-                return "\(pair.base.symbol)/\(pair.quote.symbol)"
-            case .perpetual(let crypto):
-                return "\(crypto.symbol)-PERP"
-            }
-        }
-    }
-}
-
-struct Pair {
-    let base: Crypto
-    let quote: Crypto
+    case badRequest
 }

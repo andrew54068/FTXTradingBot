@@ -1,12 +1,16 @@
 //
 //  StringExtension.swift
-//  
+//
 //
 //  Created by Andrew Wang on 2021/8/30.
 //
 
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 import Foundation
-import CryptoKit
 
 extension Data {
     func hash(secretString: String) -> String {

@@ -1,37 +1,34 @@
 //
 //  FTXSingleMarketRequest.swift
-//  
+//
 //
 //  Created by Andrew Wang on 2021/9/4.
 //
 
-import Moya
+import NIOHTTP1
 
 struct FTXSingleMarketRequest: FTXTargetType {
     typealias ResultType = MarketModel
-    
-    var method: Moya.Method {
-        .get
+
+    var method: HTTPMethod {
+        .GET
     }
-    
+
     var keyPath: String? {
         "result"
     }
-    
+
     var path: String {
-        "/api/markets/\(name)}"
+        "/api/markets/\(name)"
     }
-    
+
     var task: Task {
         .requestPlain
     }
-    
-    let name: String
-    
-}
 
-struct MarketModel: Decodable {
-    let ask: Double
-    let bid: Double
-    let last: Double
+    let name: String
+
+    var needSignature: Bool {
+        false
+    }
 }
