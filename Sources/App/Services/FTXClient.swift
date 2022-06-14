@@ -67,7 +67,9 @@ class FTXClient {
         case let .quote(volume):
             return getSingleMarket(tradingTargetType: tradingTargetType)
                 .flatMap { [weak self] marketModel in
-                    guard let self = self else { return eventLoop.makeFailedFuture(FTXClientError.internal) }
+                    guard let self = self else {
+                        return eventLoop.makeFailedFuture(FTXClientError.internal)
+                    }
                     let baseVolume: Double
                     switch orderActionType.actionType {
                     case .buy:

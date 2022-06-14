@@ -156,7 +156,9 @@ struct URLEncoding: ParameterEncoding {
     // MARK: Encoding
 
     func encode(_ endpoint: Endpoint, with parameters: Parameters?) throws {
-        guard let parameters = parameters else { return }
+        guard let parameters = parameters else {
+            return
+        }
 
         let method = endpoint.method
         if destination.encodesParametersInURL(for: method) {
@@ -259,7 +261,9 @@ struct JSONEncoding: ParameterEncoding {
     // MARK: Encoding
 
     func encode(_ endpoint: Endpoint, with parameters: Parameters?) throws {
-        guard let parameters = parameters else { return }
+        guard let parameters = parameters else {
+            return
+        }
 
         do {
             let data = try JSONSerialization.data(withJSONObject: parameters, options: options)
@@ -283,7 +287,9 @@ struct JSONEncoding: ParameterEncoding {
     /// - Returns:      The encoded `URLRequest`.
     /// - Throws:       Any `Error` produced during encoding.
     func encode(_ endpoint: Endpoint, withJSONObject jsonObject: Any? = nil) throws {
-        guard let jsonObject = jsonObject else { return }
+        guard let jsonObject = jsonObject else {
+            return
+        }
 
         do {
             let data = try JSONSerialization.data(withJSONObject: jsonObject, options: options)
@@ -301,8 +307,8 @@ struct JSONEncoding: ParameterEncoding {
 
 // MARK: -
 
-private extension NSNumber {
-    var isBool: Bool {
+extension NSNumber {
+    fileprivate var isBool: Bool {
         // Use Obj-C type encoding to check whether the underlying type is a `Bool`, as it's guaranteed as part of
         // swift-corelibs-foundation, per [this discussion on the Swift forums](https://forums.swift.org/t/alamofire-on-linux-possible-but-not-release-ready/34553/22).
         String(cString: objCType) == "c"
@@ -322,7 +328,7 @@ enum ParameterEncodingFailureReason {
     case customEncodingFailed(error: Error)
 }
 
-public extension CharacterSet {
+extension CharacterSet {
     /// Creates a CharacterSet from RFC 3986 allowed characters.
     ///
     /// RFC 3986 states that the following characters are "reserved" characters.
@@ -333,7 +339,7 @@ public extension CharacterSet {
     /// In RFC 3986 - Section 3.4, it states that the "?" and "/" characters should not be escaped to allow
     /// query strings to include a URL. Therefore, all "reserved" characters with the exception of "?" and "/"
     /// should be percent-escaped in the query string.
-    static let afURLQueryAllowed: CharacterSet = {
+    public static let afURLQueryAllowed: CharacterSet = {
         let generalDelimitersToEncode = ":#[]@" // does not include "?" or "/" due to RFC 3986 - Section 3.4
         let subDelimitersToEncode = "!$&'()*+,;="
         let encodableDelimiters = CharacterSet(charactersIn: "\(generalDelimitersToEncode)\(subDelimitersToEncode)")

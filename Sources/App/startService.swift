@@ -32,7 +32,7 @@ public func startService(app: Application) -> EventLoopFuture<OrderResponseModel
         ftxClient: ftx,
         logger: app.logger
     )
-    
+
     globalListingArbitrageService = listingArbitrageService
 
     return listingArbitrageService.start(

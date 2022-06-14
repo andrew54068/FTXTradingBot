@@ -148,15 +148,13 @@ public struct OrderResponseModel: Decodable {
     }
 }
 
-extension OrderResponseModel: Content {
-    
-}
+extension OrderResponseModel: Content {}
 
-//extension OrderResponseModel: ResponseEncodable {
+// extension OrderResponseModel: ResponseEncodable {
 //    public func encodeResponse(for request: Request) -> EventLoopFuture<Response> {
 //        request.eventLoop.makeCompletedFuture(Result<Success, Error>)
 //    }
-//}
+// }
 
 enum FTXOrderStatus {
     case open

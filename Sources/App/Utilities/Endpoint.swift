@@ -96,8 +96,7 @@ final class Endpoint {
 
     private func add(httpHeader headers: [String: String]?) -> [String: String]? {
         guard let unwrappedHeaders = headers,
-              unwrappedHeaders.isEmpty == false
-        else {
+              unwrappedHeaders.isEmpty == false else {
             return httpHeaderFields
         }
 
